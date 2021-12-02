@@ -5,7 +5,6 @@ increases = 0
 for line in lines:
     line = line.strip()
     if not line == '':
-        print(queue)
         current_depth = int(line)
         if len(queue) == 3:
             current_size = sum(queue)
@@ -16,5 +15,4 @@ for line in lines:
                 increases += 1
         else:
             queue.append(int(line))
-print(len(lines))
 print(increases)
