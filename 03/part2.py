@@ -1,11 +1,9 @@
 def count_binary_elements(input_lines):
     element_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     for line in input_lines:
-        i = 0
-        for char in line:
+        for (i, char) in enumerate(line):
             if char == '1':
                 element_counts[i] += 1
-            i += 1
     return element_counts
 
 
