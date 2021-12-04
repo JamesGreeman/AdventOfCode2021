@@ -28,9 +28,9 @@ def update_board(board, value):
                 board[i][j] = value, True
 
 
-# Checks for horizontal, vertical or diagonal winning lines, return True if any are found
+# Checks for horizontal or vertical winning lines, return True if any are found
 def is_winning_board(board):
-    return has_winning_horizontal(board) or has_winning_vertical(board) or has_winning_diagonal(board)
+    return has_winning_horizontal(board) or has_winning_vertical(board)
 
 
 # Checks for any horizontal line where all the values are marked as True
@@ -56,25 +56,6 @@ def has_winning_vertical(board):
                 print()
                 print_board_status(f"Vertical column {column}", board)
                 return True
-    return False
-
-
-# Checks if either diagonal has all the values are marked as True
-def has_winning_diagonal(board):
-    for i in range(5):
-        _, marked = board[i][i]
-        if not marked:
-            break
-        if i == 4:
-            print_board_status(f"Diagonally down", board)
-            return True
-    for i in range(5):
-        _, marked = board[i][4-i]
-        if not marked:
-            break
-        if i == 4:
-            print_board_status(f"Diagonally up", board)
-            return True
     return False
 
 

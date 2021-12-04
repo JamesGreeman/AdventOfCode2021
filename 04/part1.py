@@ -23,7 +23,7 @@ def update_board(board, value):
 
 
 def is_winning_board(board):
-    return has_winning_horizonal(board) or has_winning_vertical(board) or has_winning_diagonal(board)
+    return has_winning_horizonal(board) or has_winning_vertical(board)
 
 
 def has_winning_horizonal(board):
@@ -44,22 +44,6 @@ def has_winning_vertical(board):
                 break
             if row == 4:
                 return True
-    return False
-
-
-def has_winning_diagonal(board):
-    for i in range(5):
-        _, marked = board[i][i]
-        if not marked:
-            break
-        if i == 4:
-            return True
-    for i in range(5):
-        _, marked = board[i][4-i]
-        if not marked:
-            break
-        if i == 4:
-            return True
     return False
 
 
