@@ -1,54 +1,85 @@
+from typing import List, Tuple
 
-def read_positions():
-    crabs = [int(value) for value in open('input.txt', 'r').readline().strip().split(",")]
-    return crabs
+
+def signal_contains(signal_a, signal_b):
+    return all([(letter in signal_a) for letter in signal_b])
+
+
+def solve_entry(entry: Tuple[List[str], List[str]]) -> int:
+    input = entry[0]
+    signal_patterns = [''] * 10
+
+    signal_patterns[1] = [signal for signal in input if len(signal) == 2][0]
+
+    signal_patterns[4] = [signal for signal in input if len(signal) == 4][0]
+
+    signal_patterns[7] = [signal for signal in input if len(signal) == 3][0]
+
+    signal_patterns[8] = [signal for signal in input if len(signal) == 7][0]
+
+    signal_patterns[9] = \
+    [signal for signal in input if len(signal) == 6 and signal_contains(signal, signal_patterns[4])][0]
+
+    signal_patterns[3] = \
+    [signal for signal in input if len(signal) == 5 and signal_contains(signal, signal_patterns[7])][0]
+    input = [i for i in input if i not in signal_patterns]
+
+    signal_patterns[0] = \
+    [signal for signal in input if len(signal) == 6 and signal_contains(signal, signal_patterns[7])][0]
+    input = [i for i in input if i not in signal_patterns]
+
+    signal_patterns[6] = [signal for signal in input if len(signal) == 6][0]
+
+    signal_patterns[5] = \
+    [signal for signal in input if len(signal) == 5 and signal_contains(signal_patterns[6], signal)][0]
+    signal_patterns[2] = [i for i in input if i not in signal_patterns][0]
+
+    output = resolve_out_with_signal_patterns(entry[1], signal_patterns)
+    return output
+
+
+def resolve_out_with_signal_patterns(output_patterns, signal_patterns):
+    output = 0
+    first = True
+    for pattern in output_patterns:
+        if not first:
+            output *= 10
+        match = \
+            [value for value, p in enumerate(signal_patterns) if
+             len(p) == len(pattern) and signal_contains(p, pattern)][0]
+        output += match
+        first = False
+    return output
+
+
+def count_all_with_sizes(input: List[Tuple[List[str], List[str]]], sizes: List[int]) -> List[Tuple[int, int]]:
+    def count_with_sizes(input: List[str], sizes: List[int]) -> int:
+        return len([item for item in input if len(item) in sizes])
+
+    counts_per_line = [(count_with_sizes(i, sizes), count_with_sizes(o, sizes)) for i, o in input]
+
+    return counts_per_line
+
+
+def read_signal() -> List[Tuple[List[str], List[str]]]:
+    def split_values(raw_values: str) -> List[str]:
+        return raw_values.strip().split(" ")
+
+    lines = [line.strip() for line in open('input.txt', 'r').readlines()]
+    input_output_pairs = [(line.split("|")) for line in lines]
+    return [(split_values(i), split_values(o)) for i, o in input_output_pairs]
 
 
 def main():
-    initial_positions = read_positions()
+    signals = read_signal()
 
-    # Part 1 - the median value is the cheapest to travel to
-    median = sorted(initial_positions)[len(initial_positions) // 2]
-    cost = simple_cost_to_position(initial_positions, median)
+    counts = count_all_with_sizes(signals, [2, 3, 4, 7])
+    output_counts = sum([oc for _, oc in counts])
+    print(output_counts)
 
-    print(f"Position: {median}, Cost: {cost}")
+    solved_signals = [solve_entry(entry) for entry in signals]
 
-    # Part 2 - the cost is now the triangle value of the position. Trying to binary search:
-    positions = sorted(initial_positions)
-    lower = 0
-    upper = max(positions)
-
-    while lower < upper:
-        middle_pos = lower + ((upper - lower) // 2)
-        cost_a = triangle_cost_to_position(positions, middle_pos)
-        cost_b = triangle_cost_to_position(positions, middle_pos + 1)
-        cost_c = triangle_cost_to_position(positions, middle_pos - 1)
-
-        if cost_a > cost_b:
-            lower = middle_pos
-        elif cost_a > cost_c:
-            upper = middle_pos
-        else:
-            lower = middle_pos
-            upper = middle_pos
-    new_cost = triangle_cost_to_position(initial_positions, lower)
-
-    print(f"Position: {lower}, Cost: {new_cost}")
-
-
-def simple_cost_to_position(positions, target_pos):
-    return sum([abs(target_pos - pos) for pos in positions])
-
-
-def triangle_cost_to_position(positions, target_pos):
-    return sum([get_triangle_number(abs(target_pos - pos)) for pos in positions])
-
-
-def get_triangle_number(n):
-    number = 0
-    for i in range(0, n + 1):
-        number += i
-    return number
+    print(sum(solved_signals))
 
 
 main()
