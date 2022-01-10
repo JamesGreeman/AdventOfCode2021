@@ -1,129 +1,117 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Tuple
+import re
+from typing import List
+
+INSTRUCTION_REGEX = re.compile("(on|off) x=(-?\\d+)..(-?\\d+),y=(-?\\d+)..(-?\\d+),z=(-?\\d+)..(-?\\d+)")
 
 
-def read_raw_input() -> List[Player, Player]:
-    lines = [line.strip() for line in open("input.txt")]
-    return [Player(parse_start_pos(line)) for line in lines]
+def read_raw_input() -> List[Instruction]:
+    return [parse_instruction(line.strip()) for line in open("input.txt") if line]
 
 
-def read_starting_key() -> str:
-    lines = [line.strip() for line in open("input.txt")]
-    start_pos_1 = lines[0][len(lines[0]) - 1]
-    start_pos_2 = lines[1][len(lines[1]) - 1]
-    return f"{start_pos_1}_0_{start_pos_2}_0"
+def parse_instruction(input_string: str) -> Instruction:
+    groups = INSTRUCTION_REGEX.match(input_string).groups()
+    
+    turn_on = groups[0] == "on"
+    x_1 = int(groups[1])
+    x_2 = int(groups[2])
+    y_1 = int(groups[3])
+    y_2 = int(groups[4])
+    z_1 = int(groups[5])
+    z_2 = int(groups[6])
+
+    x_range = range(min(x_1, x_2), max(x_1, x_2) + 1)
+    y_range = range(min(y_1, y_2), max(y_1, y_2) + 1)
+    z_range = range(min(z_1, z_2), max(z_1, z_2) + 1)
+
+    return Instruction(turn_on, Volume(x_range, y_range, z_range))
 
 
-def parse_start_pos(line: str) -> int:
-    return int(line[len(line) - 1])
+class Instruction:
+
+    def __init__(self, turn_on: bool, volume: Volume):
+        self.turn_on = turn_on
+        self.volume = volume
+
+    def run_instruction(self, core_grid: List[List[List[bool]]]):
+        normal_x = self._normalise_range(self.volume.x_range)
+        normal_y = self._normalise_range(self.volume.y_range)
+        normal_z = self._normalise_range(self.volume.z_range)
+
+        print(f"{normal_x} - {normal_y} - {normal_z}")
+
+        for x in normal_x:
+            for y in normal_y:
+                for z in normal_z:
+                    core_grid[x][y][z] = self.turn_on
+
+    @staticmethod
+    def _normalise_range(range_to_normalise: range):
+        start = max(range_to_normalise.start + 50, 0)
+        end = min(range_to_normalise.stop + 50, 101)
+        return range(start, end)
+
+    def __repr__(self):
+        return f"{'on' if self.turn_on else  'off'} - {self.volume}"
 
 
-class Player:
+class Volume:
 
-    def __init__(self, position: int):
-        self.position = position
-        self.score = 0
+    def __init__(self, x_range: range, y_range: range, z_range: range):
+        self.x_range = x_range
+        self.y_range = y_range
+        self.z_range = z_range
 
-    def play(self, dice: Dice):
-        moves = dice.roll() + dice.roll() + dice.roll()
-        self.position = ((self.position + moves - 1) % 10) + 1
-        self.score += self.position
+    def get_volume(self, excluded_volumes: List[Volume]) -> int:
+        initial_volume = (self.x_range.stop - self.x_range.start) * \
+                         (self.y_range.stop - self.y_range.start) * \
+                         (self.z_range.stop - self.z_range.start)
 
-    def __repr__(self) -> str:
-        return f"Player(pos={self.position}, score={self.score})"
+        intersecting_volumes = [volume.get_intersection(self) for volume in excluded_volumes if volume.intersects(self)]
 
+        processed_volumes = []
+        for volume in intersecting_volumes:
+            initial_volume -= volume.get_volume(processed_volumes)
+            processed_volumes.append(volume)
+        return initial_volume
 
-class Dice(ABC):
+    def intersects(self, other: Volume) -> bool:
+        return self.x_range.start < other.x_range.stop and self.x_range.stop > other.x_range.start and \
+               self.y_range.start < other.y_range.stop and self.y_range.stop > other.y_range.start and \
+               self.z_range.start < other.z_range.stop and self.z_range.stop > other.z_range.start
 
-    @abstractmethod
-    def roll(self) -> int:
-        pass
+    def get_intersection(self, other: Volume) -> Volume:
+        return Volume(range(max(self.x_range.start, other.x_range.start), min(self.x_range.stop, other.x_range.stop)),
+                      range(max(self.y_range.start, other.y_range.start), min(self.y_range.stop, other.y_range.stop)),
+                      range(max(self.z_range.start, other.z_range.start), min(self.z_range.stop, other.z_range.stop)))
 
-
-class DeterministicDice(Dice):
-
-    def __init__(self):
-        self.value = 0
-        self.roll_count = 0
-
-    def roll(self) -> int:
-        if self.value == 100:
-            self.value = 0
-        self.value += 1
-        self.roll_count += 1
-        return self.value
+    def __repr__(self):
+        return f"Volume({self.x_range} - {self.y_range} - {self.z_range})"
 
 
 def main():
-    players = read_raw_input()
-    dice = DeterministicDice()
-    current_player = 0
-    while all([player.score < 1000 for player in players]):
-        players[current_player].play(dice)
-        current_player = 0 if current_player == len(players) - 1 else current_player + 1
+    instructions = read_raw_input()
 
-    [print(player) for player in players]
-    print(dice.roll_count)
+    core_grid = [[[False for _ in range(0, 101)] for _ in range(0, 101)] for _ in range(0, 101)]
+    [print(instruction) for instruction in instructions]
 
-    loser = [player for player in players if player.score < 1000][0]
+    for instruction in instructions:
+        instruction.run_instruction(core_grid)
 
-    print(loser.score * dice.roll_count)
+    number_on = sum([1 if on else 0 for x_iter in core_grid for y_iter in x_iter for on in y_iter])
+    print(number_on)
 
-    wins = get_winning_universe_counts()
-    print(wins)
+    volumes_counted = []
+    count_lit = 0
 
+    instructions.reverse()
+    for instruction in instructions:
+        if instruction.turn_on:
+            count_lit += instruction.volume.get_volume(volumes_counted)
+        volumes_counted.append(instruction.volume)
 
-def get_winning_universe_counts():
-    universes_per_roll = get_universes_per_roll()
-    print(universes_per_roll)
-    wins = [0, 0]
-    incomplete_games = {
-        read_starting_key(): 1
-    }
-    while len(incomplete_games) > 0:
-        new_games = {}
-        for key, universes in incomplete_games.items():
-            (p1_pos, p1_score), (p2_pos, p2_score) = parse_key(key)
-            for roll, uni_count_1 in universes_per_roll.items():
-                p1_end_pos = get_new_pos(p1_pos, roll)
-                p1_end_score = p1_end_pos + p1_score
-                if p1_end_score >= 21:
-                    wins[0] += universes * uni_count_1
-                else:
-                    for roll_2, uni_count_2 in universes_per_roll.items():
-                        p2_end_pos = get_new_pos(p2_pos, roll_2)
-                        p2_end_score = p2_end_pos + p2_score
-                        if p2_end_score >= 21:
-                            wins[1] += universes * uni_count_1 * uni_count_2
-                        else:
-                            new_key = f"{p1_end_pos}_{p1_end_score}_{p2_end_pos}_{p2_end_score}"
-                            new_games.setdefault(new_key, 0)
-                            new_games[new_key] += universes * uni_count_1 * uni_count_2
-        incomplete_games = new_games
-    return wins
-
-
-def get_new_pos(old_pos: int, roll: int) -> int:
-    return (old_pos + roll - 1) % 10 + 1
-
-
-def parse_key(key: str) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-    p1_pos, p1_score, p2_pos, p2_score = key.split("_")
-    return (int(p1_pos), int(p1_score)), (int(p2_pos), int(p2_score))
-
-
-def get_universes_per_roll() -> Dict[int, int]:
-
-    universes = {n: 0 for n in range(1, 11)}
-    for roll1 in range(1, 4):
-        for roll2 in range(1, 4):
-            for roll3 in range(1, 4):
-                roll_val = (roll1 + roll2 + roll3)
-                universes[roll_val] += 1
-
-    return {k: v for k, v in universes.items() if v > 0}
+    print(count_lit)
 
 
 main()
