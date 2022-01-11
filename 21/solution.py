@@ -39,8 +39,6 @@ class Instruction:
         normal_y = self._normalise_range(self.volume.y_range)
         normal_z = self._normalise_range(self.volume.z_range)
 
-        print(f"{normal_x} - {normal_y} - {normal_z}")
-
         for x in normal_x:
             for y in normal_y:
                 for z in normal_z:
